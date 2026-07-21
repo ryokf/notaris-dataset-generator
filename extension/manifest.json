@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "ATRBPN Dataset Harvester",
+  "version": "1.0",
+  "description": "Mencegat dan mengirim input form AJB ke local server.",
+  "permissions": [
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://*.atrbpn.go.id/*",
+    "http://localhost:3000/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://*.atrbpn.go.id/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

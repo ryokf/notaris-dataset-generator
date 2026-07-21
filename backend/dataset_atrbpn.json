@@ -1,0 +1,112 @@
+[
+  {
+    "akta_id": "57087514818D0472E063B516140A0738",
+    "form_source": "frmEditAkta",
+    "input_ocr": {
+      "ajb": "",
+      "npwp_penjual": "",
+      "akta_pendirian_penjual": "",
+      "ktp_persetujuan": [],
+      "ktp_pembeli": "",
+      "kk_pembeli": "",
+      "kode_berkas_cek": "",
+      "sertifikat": "",
+      "pbb": "",
+      "bphtb": "",
+      "pph": "",
+      "ktp_saksi": []
+    },
+    "output": {
+      "no_akta": "304/2026",
+      "tanggal_akta": "26/06/2026",
+      "data_penjual": [],
+      "data_pihak_persetujuan": [],
+      "data_pembeli": [],
+      "sertifikat": {
+        "nib": "",
+        "nomor_hak_atau_kode_sertif": ""
+      },
+      "pbb": {
+        "nop": "",
+        "tahun": "",
+        "luas": "",
+        "njop": ""
+      },
+      "bphtb": {
+        "no_bukti_pembayaran": ""
+      },
+      "pph": {
+        "npwp": "",
+        "no_suket": ""
+      },
+      "nilai_akta": "",
+      "data_saksi": [
+        {
+          "nik": "3321046311970003",
+          "nama": "NOVIA MAHARSARI",
+          "alamat": "Kabupaten Pati, Dukuh Ngobongan, Rukun Tetangga 003, Rukun Warga 003, Desa Tanjungsekar, Pecaristan",
+          "tempat_lahir": "Semarang",
+          "tgl_lahir": "23/11/1997",
+          "jenis_kelamin": "Perempuan",
+          "pekerjaan": ""
+        }
+      ]
+    }
+  },
+  {
+    "akta_id": "5701D4F3151C154CE063B416140A611F",
+    "form_source": "frmEditAkta",
+    "input_ocr": {
+      "ajb": "",
+      "npwp_penjual": "",
+      "akta_pendirian_penjual": "",
+      "ktp_persetujuan": [],
+      "ktp_pembeli": "",
+      "kk_pembeli": "",
+      "kode_berkas_cek": "",
+      "sertifikat": "",
+      "pbb": "",
+      "bphtb": "",
+      "pph": "",
+      "ktp_saksi": []
+    },
+    "output": {
+      "no_akta": "305/2026",
+      "tanggal_akta": "26/06/2026",
+      "data_penjual": [],
+      "data_pihak_persetujuan": [],
+      "data_pembeli": [
+        {
+          "tipe_pembeli": "perorangan",
+          "jenis_bukti_identitas": "1",
+          "nomor_identitas": "3374061411040003",
+          "nama": "MUHAMAD FAUZI",
+          "alamat": "RT 004 / RW 001, Kelurahan Penggaron Kidul, Kecamatan Pedurungan, Kota Semarang",
+          "tempat_lahir": "Demak",
+          "tgl_lahir": "14/11/2004",
+          "jenis_kelamin": "Laki-laki",
+          "pekerjaan": ""
+        }
+      ],
+      "sertifikat": {
+        "nib": "",
+        "nomor_hak_atau_kode_sertif": ""
+      },
+      "pbb": {
+        "nop": "",
+        "tahun": "",
+        "luas": "",
+        "njop": ""
+      },
+      "bphtb": {
+        "no_bukti_pembayaran": ""
+      },
+      "pph": {
+        "npwp": "",
+        "no_suket": ""
+      },
+      "nilai_akta": "",
+      "data_saksi": []
+    }
+  }
+]

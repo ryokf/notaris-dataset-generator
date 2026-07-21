@@ -1,1 +1,43 @@
-/target
+# Operating System Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Rust / Backend Build Artifacts
+/target/
+**/target/
+**/*.rs.bk
+cargo-timing.html
+
+# Node / JS (Extension or tooling)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Browser Extension Builds
+*.crx
+*.xpi
+
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+
+# IDE & Text Editor Settings
+.idea/
+.vscode/
+*.swp
+*.swo
+*.tmp
+*~
+
+# Logs & Temporary Files
+*.log
+tmp/
+temp/
