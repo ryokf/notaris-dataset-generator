@@ -398,20 +398,50 @@ async fn handle_upload_ocr(
         page_files.push(temp_filename.clone());
     }
 
-    // 4. Jalankan Tesseract pada setiap halaman (atau file tunggal), gabungkan hasilnya
+    // 4. Jalankan OCR pada setiap halaman: Pre-process → Tesseract
     let mut all_ocr_text = Vec::new();
 
     for (i, page_file) in page_files.iter().enumerate() {
-        let tesseract_result = Command::new("tesseract")
+        // ── 4a. Pre-Processing via ImageMagick (Senjata Rahasia) ──
+        // Konversi ke grayscale, naikkan kontras, threshold untuk teks hitam di atas putih,
+        // dan hapus noise kecil. Hasil disimpan sebagai file _clean.png.
+        let clean_file = format!("{}_clean.png", page_file.trim_end_matches(".png").trim_end_matches(".jpg").trim_end_matches(".jpeg").trim_end_matches(".webp"));
+        let preprocess_result = Command::new("magick")
             .arg(page_file)
-            .arg("stdout")
-            .arg("-l")
-            .arg("ind")
+            .arg("-colorspace").arg("gray")         // Ubah ke hitam-putih
+            .arg("-auto-level")                     // Perbaiki kontras secara otomatis
+            .arg("-enhance")                        // Kurangi noise bintik-bintik (despeckle)
+            .arg("-sharpen").arg("0x1.5")           // Pertajam tepi huruf agar mudah dibaca Tesseract
+            .arg("-deskew").arg("40%")              // Luruskan gambar yang miring
+            .arg(&clean_file)
             .output()
             .await;
 
-        // Hapus file halaman setelah diproses
+        // Tentukan file mana yang akan di-OCR
+        let ocr_input = match preprocess_result {
+            Ok(output) if output.status.success() => {
+                println!("🧹 Halaman {} di-preprocess berhasil.", i + 1);
+                clean_file.clone()
+            }
+            _ => {
+                println!("⚠️  ImageMagick gagal pada halaman {}, OCR langsung tanpa preprocess.", i + 1);
+                page_file.clone()
+            }
+        };
+
+        // ── 4b. Tesseract dengan parameter optimal ──
+        let tesseract_result = Command::new("tesseract")
+            .arg(&ocr_input)
+            .arg("stdout")
+            .arg("-l").arg("ind+eng")              // Gunakan kamus Indonesia + Inggris untuk NIK & Nama
+            .arg("--oem").arg("1")                    // Mode Neural Network (LSTM)
+            .arg("--psm").arg("3")                    // Deteksi layout halaman otomatis
+            .output()
+            .await;
+
+        // Bersihkan file sementara
         let _ = fs::remove_file(page_file);
+        let _ = fs::remove_file(&clean_file);
 
         match tesseract_result {
             Ok(output) if output.status.success() => {
@@ -428,6 +458,8 @@ async fn handle_upload_ocr(
                 // Bersihkan sisa file halaman
                 for remaining in page_files.iter().skip(i + 1) {
                     let _ = fs::remove_file(remaining);
+                    let clean = format!("{}_clean.png", remaining.trim_end_matches(".png"));
+                    let _ = fs::remove_file(&clean);
                 }
                 println!("❌ Gagal menjalankan Tesseract: {}", e);
                 return Json(json!({ "error": format!("Tesseract tidak ditemukan: {}. Install via `brew install tesseract`.", e) }));
