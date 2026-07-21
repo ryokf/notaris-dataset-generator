@@ -1,11 +1,11 @@
 use axum::{
-    extract::{State, Json},
+    extract::{Multipart, State, Json},
     routing::post,
     Router,
 };
 use serde_json::{json, Value};
 use std::{fs, path::PathBuf, sync::Arc};
-use tokio::sync::Mutex;
+use tokio::{sync::Mutex, process::Command};
 use tower_http::cors::{Any, CorsLayer};
 
 struct AppState {
@@ -24,6 +24,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/api/intercept", post(handle_intercept))
+        .route("/api/upload-ocr", post(handle_upload_ocr)) // Endpoint Baru
         .layer(cors)
         .with_state(shared_state);
 
@@ -52,12 +53,14 @@ fn create_base_schema(akta_id: &str, form_id: &str) -> Value {
         "form_source": form_id,
         "input_ocr": {
             "ajb": "",
+            "ktp_penjual": [],
             "npwp_penjual": "",
             "akta_pendirian_penjual": "",
             "ktp_persetujuan": [],
             "ktp_pembeli": "",
             "kk_pembeli": "",
             "kode_berkas_cek": "",
+            "keabsahan": "",
             "sertifikat": "",
             "pbb": "",
             "bphtb": "",
@@ -290,4 +293,210 @@ async fn handle_intercept(
     }
 
     Json(json!({ "error": "Gagal menyimpan file" }))
+}
+
+// ==========================================
+// HANDLER BARU: Upload File → OCR → Update JSON
+// ==========================================
+async fn handle_upload_ocr(
+    State(state): State<Arc<Mutex<AppState>>>,
+    mut multipart: Multipart,
+) -> Json<Value> {
+    let mut akta_id = String::new();
+    let mut doc_type = String::new();
+    let mut file_bytes: Vec<u8> = Vec::new();
+    let mut original_filename = String::from("upload.png");
+
+    // 1. Parsing Form Data (File & Metadata)
+    while let Some(field) = multipart.next_field().await.unwrap_or(None) {
+        let name = field.name().unwrap_or("").to_string();
+        match name.as_str() {
+            "akta_id"  => akta_id = field.text().await.unwrap_or_default(),
+            "doc_type" => doc_type = field.text().await.unwrap_or_default(),
+            "file" => {
+                // Simpan nama file asli untuk menentukan ekstensi
+                if let Some(fname) = field.file_name() {
+                    original_filename = fname.to_string();
+                }
+                file_bytes = field.bytes().await.unwrap_or_default().to_vec();
+            }
+            _ => {}
+        }
+    }
+
+    if akta_id.is_empty() || file_bytes.is_empty() || doc_type.is_empty() {
+        println!("❌ Upload gagal: Data tidak lengkap (akta_id={}, doc_type={}, file_size={}).", akta_id, doc_type, file_bytes.len());
+        return Json(json!({ "error": "Data tidak lengkap: akta_id, doc_type, dan file wajib diisi." }));
+    }
+
+    // Tentukan ekstensi file (pertahankan ekstensi asli agar Tesseract bisa mendeteksi format)
+    let ext = std::path::Path::new(&original_filename)
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("png")
+        .to_lowercase();
+
+    println!("📥 Menerima file '{}' ({}) untuk Akta ID: {}... Memproses OCR ⚙️", doc_type, ext, akta_id);
+
+    // 2. Simpan file sementara
+    let temp_prefix = format!("temp_ocr_{}_{}", akta_id, doc_type);
+    let temp_filename = format!("{}.{}", temp_prefix, ext);
+    if let Err(e) = fs::write(&temp_filename, &file_bytes) {
+        println!("❌ Gagal menyimpan file sementara: {}", e);
+        return Json(json!({ "error": "Gagal menyimpan file sementara." }));
+    }
+
+    // 3. Jika PDF, konversi ke PNG dulu menggunakan pdftoppm (Poppler)
+    let is_pdf = ext == "pdf";
+    let mut page_files: Vec<String> = Vec::new();
+
+    if is_pdf {
+        println!("📄 File PDF terdeteksi, mengonversi ke PNG...");
+        let convert_result = Command::new("pdftoppm")
+            .arg("-png")
+            .arg("-r").arg("300") // 300 DPI untuk kualitas OCR yang baik
+            .arg(&temp_filename)
+            .arg(&temp_prefix) // output: temp_prefix-1.png, temp_prefix-2.png, ...
+            .output()
+            .await;
+
+        // Hapus file PDF asli (tidak diperlukan lagi)
+        let _ = fs::remove_file(&temp_filename);
+
+        match convert_result {
+            Ok(output) if output.status.success() => {
+                // Kumpulkan semua file PNG hasil konversi, urutkan berdasarkan nama
+                if let Ok(entries) = fs::read_dir(".") {
+                    let mut files: Vec<String> = entries
+                        .filter_map(|e| e.ok())
+                        .map(|e| e.file_name().to_string_lossy().to_string())
+                        .filter(|name| name.starts_with(&temp_prefix) && name.ends_with(".png"))
+                        .collect();
+                    files.sort();
+                    page_files = files;
+                }
+
+                if page_files.is_empty() {
+                    println!("❌ pdftoppm tidak menghasilkan file PNG.");
+                    return Json(json!({ "error": "Konversi PDF gagal: tidak ada halaman yang dihasilkan." }));
+                }
+
+                println!("✅ PDF dikonversi menjadi {} halaman PNG.", page_files.len());
+            }
+            Ok(output) => {
+                let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+                println!("❌ pdftoppm gagal: {}", stderr);
+                return Json(json!({ "error": format!("Konversi PDF gagal: {}. Install via `brew install poppler`.", stderr.trim()) }));
+            }
+            Err(e) => {
+                println!("❌ pdftoppm tidak ditemukan: {}", e);
+                return Json(json!({ "error": format!("pdftoppm tidak ditemukan: {}. Install via `brew install poppler`.", e) }));
+            }
+        }
+    } else {
+        // Bukan PDF → langsung pakai file asli
+        page_files.push(temp_filename.clone());
+    }
+
+    // 4. Jalankan Tesseract pada setiap halaman (atau file tunggal), gabungkan hasilnya
+    let mut all_ocr_text = Vec::new();
+
+    for (i, page_file) in page_files.iter().enumerate() {
+        let tesseract_result = Command::new("tesseract")
+            .arg(page_file)
+            .arg("stdout")
+            .arg("-l")
+            .arg("ind")
+            .output()
+            .await;
+
+        // Hapus file halaman setelah diproses
+        let _ = fs::remove_file(page_file);
+
+        match tesseract_result {
+            Ok(output) if output.status.success() => {
+                let text = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                if !text.is_empty() {
+                    all_ocr_text.push(text);
+                }
+            }
+            Ok(output) => {
+                let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+                println!("⚠️  Tesseract error pada halaman {} dari '{}': {}", i + 1, doc_type, stderr.trim());
+            }
+            Err(e) => {
+                // Bersihkan sisa file halaman
+                for remaining in page_files.iter().skip(i + 1) {
+                    let _ = fs::remove_file(remaining);
+                }
+                println!("❌ Gagal menjalankan Tesseract: {}", e);
+                return Json(json!({ "error": format!("Tesseract tidak ditemukan: {}. Install via `brew install tesseract`.", e) }));
+            }
+        }
+    }
+
+    let ocr_text = all_ocr_text.join("\n\n--- halaman ---\n\n");
+
+    if ocr_text.is_empty() {
+        println!("⚠️  OCR tidak menghasilkan teks untuk '{}' (Akta: {})", doc_type, akta_id);
+    } else {
+        println!("✅ OCR Selesai untuk '{}' (Akta: {}). {} karakter dari {} halaman.", doc_type, akta_id, ocr_text.len(), all_ocr_text.len());
+    }
+
+    // 4. Update file JSON secara aman (lock mutex agar thread-safe)
+    let state_lock = state.lock().await;
+    let file_path = &state_lock.file_path;
+
+    let mut current_data: Vec<Value> = vec![];
+    if file_path.exists() {
+        if let Ok(content) = fs::read_to_string(file_path) {
+            if let Ok(parsed) = serde_json::from_str(&content) {
+                current_data = parsed;
+            }
+        }
+    }
+
+    let entry_idx = current_data.iter().position(|item| {
+        item.get("akta_id").and_then(|v| v.as_str()).unwrap_or("") == akta_id
+    });
+
+    let mut entry = if let Some(idx) = entry_idx {
+        current_data.remove(idx)
+    } else {
+        // Buat entry baru jika belum ada (bisa terjadi jika OCR dilakukan sebelum intercept)
+        println!("ℹ️  Entry untuk Akta ID '{}' belum ada, membuat skema baru.", akta_id);
+        create_base_schema(&akta_id, "ocr_upload")
+    };
+
+    // 5. Masukkan teks OCR ke field yang tepat di dalam "input_ocr"
+    //    Untuk field array (ktp_persetujuan, ktp_saksi), append sebagai elemen baru.
+    if let Some(input_ocr) = entry.get_mut("input_ocr") {
+        match doc_type.as_str() {
+            "ktp_penjual" | "ktp_persetujuan" | "ktp_saksi" => {
+                // Field ini adalah array, tambahkan entri baru
+                if let Some(arr) = input_ocr[&doc_type].as_array_mut() {
+                    arr.push(json!(ocr_text));
+                }
+            }
+            _ => {
+                // Field biasa: langsung replace
+                input_ocr[&doc_type] = json!(ocr_text);
+            }
+        }
+    }
+
+    current_data.push(entry);
+
+    // 6. Simpan kembali ke JSON
+    match serde_json::to_string_pretty(&current_data) {
+        Ok(json_str) => {
+            if fs::write(file_path, json_str).is_ok() {
+                println!("💾 Teks OCR '{}' berhasil disuntikkan ke JSON untuk Akta ID: {}", doc_type, akta_id);
+                Json(json!({ "status": "success", "doc_type": doc_type, "akta_id": akta_id, "chars_extracted": ocr_text.len() }))
+            } else {
+                Json(json!({ "error": "Gagal menyimpan file JSON." }))
+            }
+        }
+        Err(e) => Json(json!({ "error": format!("Gagal serialisasi JSON: {}", e) }))
+    }
 }
