@@ -76,7 +76,8 @@ fn create_base_schema(akta_id: &str, form_id: &str) -> Value {
             "data_pembeli": [],
             "sertifikat": {
                 "nib": "",
-                "nomor_hak_atau_kode_sertif": ""
+                "nomor_hak_atau_kode_sertif": "",
+                "nomer_berkas": ""
             },
             "pbb": {
                 "nop": "",
@@ -368,7 +369,14 @@ async fn handle_intercept(
         if sertif.is_empty() { sertif = get_val(&data, &["nomorhak"]); }
         if sertif.is_empty() { sertif = get_val(&output["sertifikat"], &["nomor_hak_atau_kode_sertif"]); }
 
-        output["sertifikat"] = json!({ "nib": nib, "nomor_hak_atau_kode_sertif": sertif });
+        let mut nomer_berkas = get_val(&data, &["nomorberkas", "nomerberkas", "nomor_berkas", "nomer_berkas"]);
+        if nomer_berkas.is_empty() { nomer_berkas = get_val(&output["sertifikat"], &["nomer_berkas"]); }
+
+        output["sertifikat"] = json!({
+            "nib": nib,
+            "nomor_hak_atau_kode_sertif": sertif,
+            "nomer_berkas": nomer_berkas
+        });
     }
     else if form_id == "frmPBBDetail" || get_val(&data, &["tipedokumen"]) == "PBB" {
         let n_nop = get_val(&data, &["nomor"]);

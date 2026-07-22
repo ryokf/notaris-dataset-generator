@@ -736,6 +736,7 @@ export default function AktaDetail() {
               <h2 className={styles.sectionTitle}>Sertifikat</h2>
               {renderField('NIB', output?.sertifikat?.nib, 'output.sertifikat.nib')}
               {renderField('Nomor Hak / Kode Sertif', output?.sertifikat?.nomor_hak_atau_kode_sertif, 'output.sertifikat.nomor_hak_atau_kode_sertif')}
+              {renderField('Nomor Berkas', output?.sertifikat?.nomer_berkas, 'output.sertifikat.nomer_berkas')}
             </section>
 
             <section className={styles.card}>

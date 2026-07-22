@@ -22,7 +22,8 @@
       "data_pembeli": [],
       "sertifikat": {
         "nib": "",
-        "nomor_hak_atau_kode_sertif": ""
+        "nomor_hak_atau_kode_sertif": "",
+        "nomer_berkas": ""
       },
       "pbb": {
         "nop": "",
@@ -108,7 +109,8 @@
       ],
       "sertifikat": {
         "nib": "05336",
-        "nomor_hak_atau_kode_sertif": "11.09.12.04.3.01166"
+        "nomor_hak_atau_kode_sertif": "11.09.12.04.3.01166",
+        "nomer_berkas": ""
       },
       "pbb": {
         "nop": "332107000401810530",
@@ -216,7 +218,8 @@
       ],
       "sertifikat": {
         "nib": "01456",
-        "nomor_hak_atau_kode_sertif": "11.09.05.13.1.02573"
+        "nomor_hak_atau_kode_sertif": "11.09.05.13.1.02573",
+        "nomer_berkas": ""
       },
       "pbb": {
         "nop": "332104001401300500",
@@ -258,7 +261,8 @@
       "data_pembeli": [],
       "sertifikat": {
         "nib": "01040",
-        "nomor_hak_atau_kode_sertif": "11.09.10.09.3.00431"
+        "nomor_hak_atau_kode_sertif": "11.09.10.09.3.00431",
+        "nomer_berkas": ""
       },
       "pbb": {
         "nop": "",
@@ -336,7 +340,8 @@
       ],
       "sertifikat": {
         "nib": "11090000563860",
-        "nomor_hak_atau_kode_sertif": "4H6LIF"
+        "nomor_hak_atau_kode_sertif": "4H6LIF",
+        "nomer_berkas": ""
       },
       "pbb": {
         "nop": "332104001401400290",

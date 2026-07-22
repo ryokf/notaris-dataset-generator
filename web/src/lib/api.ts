@@ -21,7 +21,7 @@ export interface AktaEntry {
     data_penjual: any[];
     data_pihak_persetujuan: any[];
     data_pembeli: any[];
-    sertifikat: { nib: string; nomor_hak_atau_kode_sertif: string };
+    sertifikat: { nib: string; nomor_hak_atau_kode_sertif: string; nomer_berkas: string };
     pbb: { nop: string; tahun: string; luas: string; njop: string };
     bphtb: { no_bukti_pembayaran: string };
     pph: { npwp: string; no_suket: string };
