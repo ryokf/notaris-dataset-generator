@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Multipart, State, Json},
+    extract::{Multipart, State, Json, DefaultBodyLimit},
     routing::post,
     Router,
 };
@@ -25,6 +25,7 @@ async fn main() {
     let app = Router::new()
         .route("/api/intercept", post(handle_intercept))
         .route("/api/upload-ocr", post(handle_upload_ocr)) // Endpoint Baru
+        .layer(DefaultBodyLimit::max(100 * 1024 * 1024))   // Izinkan upload file hingga 100MB
         .layer(cors)
         .with_state(shared_state);
 
@@ -54,9 +55,8 @@ fn create_base_schema(akta_id: &str, form_id: &str) -> Value {
         "input_ocr": {
             "ajb": "",
             "ktp_penjual": [],
-            "npwp_penjual": "",
-            "akta_pendirian_penjual": "",
-            "ktp_persetujuan": [],
+
+
             "ktp_pembeli": "",
             "kk_pembeli": "",
             "kode_berkas_cek": "",
@@ -64,8 +64,7 @@ fn create_base_schema(akta_id: &str, form_id: &str) -> Value {
             "sertifikat": "",
             "pbb": "",
             "bphtb": "",
-            "pph": "",
-            "ktp_saksi": []
+            "pph": ""
         },
         "output": {
             "no_akta": "",
@@ -308,19 +307,28 @@ async fn handle_upload_ocr(
     let mut original_filename = String::from("upload.png");
 
     // 1. Parsing Form Data (File & Metadata)
-    while let Some(field) = multipart.next_field().await.unwrap_or(None) {
-        let name = field.name().unwrap_or("").to_string();
-        match name.as_str() {
-            "akta_id"  => akta_id = field.text().await.unwrap_or_default(),
-            "doc_type" => doc_type = field.text().await.unwrap_or_default(),
-            "file" => {
-                // Simpan nama file asli untuk menentukan ekstensi
-                if let Some(fname) = field.file_name() {
-                    original_filename = fname.to_string();
+    loop {
+        match multipart.next_field().await {
+            Ok(Some(field)) => {
+                let name = field.name().unwrap_or("").to_string();
+                match name.as_str() {
+                    "akta_id"  => akta_id = field.text().await.unwrap_or_default(),
+                    "doc_type" => doc_type = field.text().await.unwrap_or_default(),
+                    "file" => {
+                        // Simpan nama file asli untuk menentukan ekstensi
+                        if let Some(fname) = field.file_name() {
+                            original_filename = fname.to_string();
+                        }
+                        file_bytes = field.bytes().await.unwrap_or_default().to_vec();
+                    }
+                    _ => {}
                 }
-                file_bytes = field.bytes().await.unwrap_or_default().to_vec();
             }
-            _ => {}
+            Ok(None) => break,
+            Err(e) => {
+                println!("❌ Gagal membaca multipart field: {}", e);
+                break;
+            }
         }
     }
 
@@ -398,16 +406,60 @@ async fn handle_upload_ocr(
         page_files.push(temp_filename.clone());
     }
 
+
+
     // 4. Jalankan OCR pada setiap halaman: Pre-process → Tesseract
     let mut all_ocr_text = Vec::new();
 
     for (i, page_file) in page_files.iter().enumerate() {
-        // ── 4a. Pre-Processing via ImageMagick (Senjata Rahasia) ──
-        // Konversi ke grayscale, naikkan kontras, threshold untuk teks hitam di atas putih,
-        // dan hapus noise kecil. Hasil disimpan sebagai file _clean.png.
+        // ── 4a-1. Deteksi Orientasi & Auto-Rotate via Tesseract OSD ──
+        let mut rotated_file = page_file.clone();
+        let osd_result = Command::new("tesseract")
+            .arg(page_file)
+            .arg("stdout")
+            .arg("--psm").arg("0")
+            .output()
+            .await;
+
+        if let Ok(output) = osd_result {
+            if output.status.success() {
+                let osd_out = String::from_utf8_lossy(&output.stdout);
+                let mut rotate_angle = None;
+                for line in osd_out.lines() {
+                    if line.starts_with("Rotate:") || line.starts_with("Rotate: ") {
+                        if let Some(angle_str) = line.split(':').nth(1) {
+                            if let Ok(angle) = angle_str.trim().parse::<i32>() {
+                                if angle != 0 {
+                                    rotate_angle = Some(angle);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if let Some(angle) = rotate_angle {
+                    println!("🔄 Halaman {} terdeteksi miring/terputar. Melakukan rotasi {} derajat...", i + 1, angle);
+                    let temp_rotated = format!("{}_rotated.png", page_file.trim_end_matches(".png").trim_end_matches(".jpg").trim_end_matches(".jpeg").trim_end_matches(".webp"));
+                    let rotate_result = Command::new("magick")
+                        .arg(page_file)
+                        .arg("-rotate").arg(angle.to_string())
+                        .arg(&temp_rotated)
+                        .output()
+                        .await;
+
+                    if let Ok(r_out) = rotate_result {
+                        if r_out.status.success() {
+                            rotated_file = temp_rotated;
+                        }
+                    }
+                }
+            }
+        }
+
+        // ── 4a-2. Pre-Processing via ImageMagick ──
         let clean_file = format!("{}_clean.png", page_file.trim_end_matches(".png").trim_end_matches(".jpg").trim_end_matches(".jpeg").trim_end_matches(".webp"));
         let preprocess_result = Command::new("magick")
-            .arg(page_file)
+            .arg(&rotated_file)
             .arg("-colorspace").arg("gray")         // Ubah ke hitam-putih
             .arg("-auto-level")                     // Perbaiki kontras secara otomatis
             .arg("-enhance")                        // Kurangi noise bintik-bintik (despeckle)
@@ -425,7 +477,7 @@ async fn handle_upload_ocr(
             }
             _ => {
                 println!("⚠️  ImageMagick gagal pada halaman {}, OCR langsung tanpa preprocess.", i + 1);
-                page_file.clone()
+                rotated_file.clone()
             }
         };
 
@@ -442,6 +494,9 @@ async fn handle_upload_ocr(
         // Bersihkan file sementara
         let _ = fs::remove_file(page_file);
         let _ = fs::remove_file(&clean_file);
+        if rotated_file != *page_file {
+            let _ = fs::remove_file(&rotated_file);
+        }
 
         match tesseract_result {
             Ok(output) if output.status.success() => {
@@ -504,7 +559,7 @@ async fn handle_upload_ocr(
     //    Untuk field array (ktp_persetujuan, ktp_saksi), append sebagai elemen baru.
     if let Some(input_ocr) = entry.get_mut("input_ocr") {
         match doc_type.as_str() {
-            "ktp_penjual" | "ktp_persetujuan" | "ktp_saksi" => {
+            "ktp_penjual" => {
                 // Field ini adalah array, tambahkan entri baru
                 if let Some(arr) = input_ocr[&doc_type].as_array_mut() {
                     arr.push(json!(ocr_text));

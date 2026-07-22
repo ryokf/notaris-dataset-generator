@@ -36,13 +36,12 @@ function kirimKeLocalServer(payload) {
 // Urutan penting: lebih spesifik dulu (ktp_pembeli sebelum ktp)
 const DOC_TYPE_RULES = [
     // Spesifik dulu (ktp_pembeli sebelum ktp generik)
-    { pattern: /ktp[\s_-]*persetujuan|persetujuan/i,          type: 'ktp_persetujuan'        },
+
     { pattern: /ktp[\s_-]*pembeli/i,                          type: 'ktp_pembeli'            },
-    { pattern: /ktp[\s_-]*saksi/i,                            type: 'ktp_saksi'              },
     { pattern: /ktp[\s_-]*penjual/i,                          type: 'ktp_penjual'            },
     { pattern: /^ktp$/i,                                      type: 'ktp_pembeli'            }, // KTP polos → default pembeli
-    { pattern: /npwp/i,                                       type: 'npwp_penjual'           },
-    { pattern: /akta[\s_-]*pendirian|pendirian/i,             type: 'akta_pendirian_penjual' },
+
+
     { pattern: /kartu[\s_-]*keluarga|^kk$/i,                  type: 'kk_pembeli'             }, // KK polos dikenali
     { pattern: /kode[\s_-]*berkas|berkas[\s_-]*cek|^cek$/i,   type: 'kode_berkas_cek'        }, // Cek polos dikenali
     { pattern: /keabsahan/i,                                  type: 'keabsahan'              },
@@ -52,18 +51,17 @@ const DOC_TYPE_RULES = [
     { pattern: /pbb/i,                                        type: 'pbb'                    },
     { pattern: /ajb|akta[\s_-]*jual/i,                        type: 'ajb'                    },
     { pattern: /pembeli/i,                                    type: 'ktp_pembeli'            }, // fallback
-    { pattern: /saksi/i,                                      type: 'ktp_saksi'              }, // fallback
+ // fallback
     { pattern: /penjual/i,                                    type: 'ktp_penjual'            }, // fallback
 ];
 
 const DOC_TYPE_LABELS = {
     ajb:                   '📄 AJB',
     ktp_penjual:           '🪪 KTP Penjual',
-    ktp_persetujuan:       '🪪 KTP Persetujuan',
     ktp_pembeli:           '🪪 KTP Pembeli',
-    ktp_saksi:             '🪪 KTP Saksi',
-    npwp_penjual:          '📋 NPWP Penjual',
-    akta_pendirian_penjual:'📑 Akta Pendirian',
+
+
+
     kk_pembeli:            '📋 KK Pembeli',
     kode_berkas_cek:       '🔍 Kode Berkas Cek',
     keabsahan:             '📋 Keabsahan',
