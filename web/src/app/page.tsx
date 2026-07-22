@@ -78,6 +78,19 @@ export default function DashboardPage() {
     }).format(num);
   };
 
+  const handleDownload = () => {
+    const jsonString = JSON.stringify(data, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'dataset_atrbpn.json';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className={styles.container}>
       <header className={styles.header}>
@@ -86,15 +99,32 @@ export default function DashboardPage() {
           {!loading && <span className={styles.badge}>{data.length}</span>}
         </div>
         
-        <div className={styles.searchContainer}>
-          <span className={styles.searchIcon}>🔍</span>
-          <input
-            type="text"
-            placeholder="Search no akta, id, or names..."
-            className={styles.searchInput}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <button 
+            onClick={handleDownload}
+            className="btn btn-primary"
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '0.5rem',
+              padding: '0.75rem 1.25rem',
+              borderRadius: '9999px',
+              fontSize: '0.875rem'
+            }}
+          >
+            📥 Download JSON
+          </button>
+
+          <div className={styles.searchContainer}>
+            <span className={styles.searchIcon}>🔍</span>
+            <input
+              type="text"
+              placeholder="Search no akta, id, or names..."
+              className={styles.searchInput}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
         </div>
       </header>
 
