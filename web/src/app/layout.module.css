@@ -1,0 +1,80 @@
+.sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 260px;
+  height: 100vh;
+  background: rgba(18, 18, 23, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+  z-index: 100;
+  box-sizing: border-box;
+}
+
+.logoArea {
+  margin-bottom: 2.5rem;
+}
+
+.logoArea h1 {
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin: 0;
+  color: #ffffff;
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: 0.35rem;
+  font-weight: 400;
+}
+
+.nav {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.navLink {
+  display: block;
+  padding: 0.85rem 1rem;
+  color: rgba(255, 255, 255, 0.7);
+  text-decoration: none;
+  border-radius: 10px;
+  transition: all 0.2s ease;
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+.navLink:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #ffffff;
+}
+
+.navLinkActive {
+  background: rgba(99, 102, 241, 0.15);
+  color: #818cf8;
+  border-left: 3px solid #818cf8;
+}
+
+.footer {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.3);
+  text-align: center;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.mainContent {
+  margin-left: 260px;
+  padding: 2rem 3rem;
+  min-height: 100vh;
+  box-sizing: border-box;
+}

@@ -1,6 +1,6 @@
 use axum::{
-    extract::{Multipart, State, Json, DefaultBodyLimit},
-    routing::post,
+    extract::{Multipart, State, Json, DefaultBodyLimit, Path},
+    routing::{post, get, delete},
     Router,
 };
 use serde_json::{json, Value};
@@ -25,6 +25,8 @@ async fn main() {
     let app = Router::new()
         .route("/api/intercept", post(handle_intercept))
         .route("/api/upload-ocr", post(handle_upload_ocr)) // Endpoint Baru
+        .route("/api/dataset", get(get_all_dataset))
+        .route("/api/dataset/:akta_id", get(get_one_dataset).put(update_dataset).delete(delete_dataset))
         .layer(DefaultBodyLimit::max(100 * 1024 * 1024))   // Izinkan upload file hingga 100MB
         .layer(cors)
         .with_state(shared_state);
@@ -671,9 +673,113 @@ async fn handle_upload_ocr(
                 println!("💾 Teks OCR '{}' berhasil disuntikkan ke JSON untuk Akta ID: {}", doc_type, akta_id);
                 Json(json!({ "status": "success", "doc_type": doc_type, "akta_id": akta_id, "chars_extracted": ocr_text.len() }))
             } else {
-                Json(json!({ "error": "Gagal menyimpan file JSON." }))
+                    return Json(json!({ "error": "Gagal menyimpan file JSON." }))
             }
         }
         Err(e) => Json(json!({ "error": format!("Gagal serialisasi JSON: {}", e) }))
     }
+}
+
+// ==========================================
+// HANDLERS UNTUK REST API
+// ==========================================
+
+async fn get_all_dataset(
+    State(state): State<Arc<Mutex<AppState>>>,
+) -> Json<Value> {
+    let state_lock = state.lock().await;
+    let file_path = &state_lock.file_path;
+
+    if file_path.exists() {
+        if let Ok(content) = fs::read_to_string(file_path) {
+            if let Ok(parsed) = serde_json::from_str::<Vec<Value>>(&content) {
+                return Json(json!(parsed));
+            }
+        }
+    }
+    
+    Json(json!([]))
+}
+
+async fn get_one_dataset(
+    State(state): State<Arc<Mutex<AppState>>>,
+    Path(akta_id): Path<String>,
+) -> Result<Json<Value>, (axum::http::StatusCode, Json<Value>)> {
+    let state_lock = state.lock().await;
+    let file_path = &state_lock.file_path;
+
+    if file_path.exists() {
+        if let Ok(content) = fs::read_to_string(file_path) {
+            if let Ok(parsed) = serde_json::from_str::<Vec<Value>>(&content) {
+                if let Some(entry) = parsed.into_iter().find(|item| item.get("akta_id").and_then(|v| v.as_str()).unwrap_or("") == akta_id) {
+                    return Ok(Json(entry));
+                }
+            }
+        }
+    }
+    
+    Err((axum::http::StatusCode::NOT_FOUND, Json(json!({ "error": "Dataset not found" }))))
+}
+
+async fn update_dataset(
+    State(state): State<Arc<Mutex<AppState>>>,
+    Path(akta_id): Path<String>,
+    Json(mut payload): Json<Value>,
+) -> Result<Json<Value>, (axum::http::StatusCode, Json<Value>)> {
+    let state_lock = state.lock().await;
+    let file_path = &state_lock.file_path;
+
+    let mut current_data: Vec<Value> = vec![];
+    if file_path.exists() {
+        if let Ok(content) = fs::read_to_string(file_path) {
+            if let Ok(parsed) = serde_json::from_str(&content) {
+                current_data = parsed;
+            }
+        }
+    }
+
+    if let Some(idx) = current_data.iter().position(|item| item.get("akta_id").and_then(|v| v.as_str()).unwrap_or("") == akta_id) {
+        payload["akta_id"] = json!(akta_id);
+        current_data[idx] = payload.clone();
+        
+        if let Ok(json_str) = serde_json::to_string_pretty(&current_data) {
+            if fs::write(file_path, json_str).is_ok() {
+                return Ok(Json(payload));
+            }
+        }
+        return Err((axum::http::StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": "Failed to write file" }))));
+    }
+    
+    Err((axum::http::StatusCode::NOT_FOUND, Json(json!({ "error": "Dataset not found" }))))
+}
+
+async fn delete_dataset(
+    State(state): State<Arc<Mutex<AppState>>>,
+    Path(akta_id): Path<String>,
+) -> Result<Json<Value>, (axum::http::StatusCode, Json<Value>)> {
+    let state_lock = state.lock().await;
+    let file_path = &state_lock.file_path;
+
+    let mut current_data: Vec<Value> = vec![];
+    if file_path.exists() {
+        if let Ok(content) = fs::read_to_string(file_path) {
+            if let Ok(parsed) = serde_json::from_str(&content) {
+                current_data = parsed;
+            }
+        }
+    }
+
+    let initial_len = current_data.len();
+    current_data.retain(|item| item.get("akta_id").and_then(|v| v.as_str()).unwrap_or("") != akta_id);
+
+    if current_data.len() < initial_len {
+        if let Ok(json_str) = serde_json::to_string_pretty(&current_data) {
+            if fs::write(file_path, json_str).is_ok() {
+                return Ok(Json(json!({ "message": "Dataset deleted successfully" })));
+            }
+        }
+        return Err((axum::http::StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": "Failed to write file" }))));
+    }
+
+    Err((axum::http::StatusCode::NOT_FOUND, Json(json!({ "error": "Dataset not found" }))))
 }

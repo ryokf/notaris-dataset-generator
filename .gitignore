@@ -15,6 +15,8 @@ cargo-timing.html
 
 # Node / JS (Extension or tooling)
 node_modules/
+.next/
+web/.next/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
