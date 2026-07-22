@@ -123,15 +123,39 @@ async fn handle_intercept(
         }
     }
 
+    // TAHAP 1: Cari entry berdasarkan akta_id (pencocokan utama)
     let entry_idx = current_data.iter().position(|item| {
         item.get("akta_id").and_then(|v| v.as_str()).unwrap_or("") == current_akta_id
     });
 
+    // TAHAP 2: Jika akta_id tidak ditemukan, cari berdasarkan no_akta (anti-duplikat)
+    // Web ATRBPN bisa menghasilkan akta_id berbeda untuk akta yang sama di sesi berbeda
+    let entry_idx = entry_idx.or_else(|| {
+        if form_id == "frmEditAkta" || get_val(&data, &["tipe"]) == "AJB" {
+            let incoming_no_akta = get_val(&data, &["nomor"]);
+            if !incoming_no_akta.is_empty() {
+                return current_data.iter().position(|item| {
+                    item.get("output")
+                        .and_then(|o| o.get("no_akta"))
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("") == incoming_no_akta
+                });
+            }
+        }
+        None
+    });
+
     let mut entry = if let Some(idx) = entry_idx {
-        current_data.remove(idx)
+        let existing = current_data.remove(idx);
+        // Jika ditemukan via no_akta (bukan akta_id), update akta_id ke yang terbaru
+        println!("📝 Menggabungkan data ke entry yang sudah ada (index: {})", idx);
+        existing
     } else {
         create_base_schema(&current_akta_id, &form_id)
     };
+
+    // Selalu update akta_id ke yang paling baru dari form
+    entry["akta_id"] = json!(current_akta_id);
 
     entry["form_source"] = json!(form_id);
     let output = entry.get_mut("output").unwrap();

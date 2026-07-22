@@ -552,6 +552,184 @@ export default function AktaDetail() {
             )}
           </section>
 
+          {/* Data Pihak Persetujuan */}
+          <section className={styles.card}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h2 className={styles.sectionTitle} style={{ margin: 0 }}>Data Pihak Persetujuan ({output?.data_pihak_persetujuan?.length || 0})</h2>
+              {isEditing && (
+                <button
+                  className={styles.itemAddBtn}
+                  onClick={() => addArrayItem('data_pihak_persetujuan', { nik: '', nama: '', alamat: '', tempat_lahir: '', tgl_lahir: '', jenis_kelamin: '', pekerjaan: '' })}
+                >
+                  ➕ Tambah
+                </button>
+              )}
+            </div>
+
+            {isEditing ? (
+              <div>
+                {(fullEditData?.output?.data_pihak_persetujuan || []).map((p: any, idx: number) => (
+                  <div key={idx} className={styles.arrayItemCard}>
+                    <div className={styles.arrayItemHeader}>
+                      <span>Pihak Persetujuan #{idx + 1}</span>
+                      <button className={styles.itemRemoveBtn} onClick={() => removeArrayItem('data_pihak_persetujuan', idx)}>
+                        🗑️ Hapus
+                      </button>
+                    </div>
+                    <div className={styles.grid2}>
+                      <div className={styles.fieldGroup}>
+                        <span className={styles.label}>NIK</span>
+                        <input type="text" className={styles.input} value={p.nik || ''} onChange={(e) => updateArrayItem('data_pihak_persetujuan', idx, 'nik', e.target.value)} />
+                      </div>
+                      <div className={styles.fieldGroup}>
+                        <span className={styles.label}>Nama</span>
+                        <input type="text" className={styles.input} value={p.nama || ''} onChange={(e) => updateArrayItem('data_pihak_persetujuan', idx, 'nama', e.target.value)} />
+                      </div>
+                      <div className={styles.fieldGroup}>
+                        <span className={styles.label}>Alamat</span>
+                        <input type="text" className={styles.input} value={p.alamat || ''} onChange={(e) => updateArrayItem('data_pihak_persetujuan', idx, 'alamat', e.target.value)} />
+                      </div>
+                      <div className={styles.fieldGroup}>
+                        <span className={styles.label}>Tempat Lahir</span>
+                        <input type="text" className={styles.input} value={p.tempat_lahir || ''} onChange={(e) => updateArrayItem('data_pihak_persetujuan', idx, 'tempat_lahir', e.target.value)} />
+                      </div>
+                      <div className={styles.fieldGroup}>
+                        <span className={styles.label}>Tgl Lahir</span>
+                        <input type="text" className={styles.input} value={p.tgl_lahir || ''} onChange={(e) => updateArrayItem('data_pihak_persetujuan', idx, 'tgl_lahir', e.target.value)} />
+                      </div>
+                      <div className={styles.fieldGroup}>
+                        <span className={styles.label}>Jenis Kelamin</span>
+                        <input type="text" className={styles.input} value={p.jenis_kelamin || ''} onChange={(e) => updateArrayItem('data_pihak_persetujuan', idx, 'jenis_kelamin', e.target.value)} />
+                      </div>
+                      <div className={styles.fieldGroup}>
+                        <span className={styles.label}>Pekerjaan</span>
+                        <input type="text" className={styles.input} value={p.pekerjaan || ''} onChange={(e) => updateArrayItem('data_pihak_persetujuan', idx, 'pekerjaan', e.target.value)} />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              output?.data_pihak_persetujuan && output.data_pihak_persetujuan.length > 0 ? (
+                <div className={styles.tableContainer}>
+                  <table className={styles.table}>
+                    <thead>
+                      <tr>
+                        <th className={styles.th}>NIK</th>
+                        <th className={styles.th}>Nama</th>
+                        <th className={styles.th}>Alamat</th>
+                        <th className={styles.th}>Tempat/Tgl Lahir</th>
+                        <th className={styles.th}>JK</th>
+                        <th className={styles.th}>Pekerjaan</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {output.data_pihak_persetujuan.map((p: any, idx: number) => (
+                        <tr key={idx} className={styles.tr}>
+                          <td className={styles.td}>{p.nik || '-'}</td>
+                          <td className={styles.td}>{p.nama || '-'}</td>
+                          <td className={styles.td}>{p.alamat || '-'}</td>
+                          <td className={styles.td}>{p.tempat_lahir}{p.tgl_lahir ? `, ${p.tgl_lahir}` : ''}</td>
+                          <td className={styles.td}>{p.jenis_kelamin || '-'}</td>
+                          <td className={styles.td}>{p.pekerjaan || '-'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>Belum ada data pihak persetujuan</p>
+            )}
+          </section>
+
+          {/* Data Saksi */}
+          <section className={styles.card}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h2 className={styles.sectionTitle} style={{ margin: 0 }}>Data Saksi ({output?.data_saksi?.length || 0})</h2>
+              {isEditing && (
+                <button
+                  className={styles.itemAddBtn}
+                  onClick={() => addArrayItem('data_saksi', { nik: '', nama: '', alamat: '', tempat_lahir: '', tgl_lahir: '', jenis_kelamin: '', pekerjaan: '' })}
+                >
+                  ➕ Tambah
+                </button>
+              )}
+            </div>
+
+            {isEditing ? (
+              <div>
+                {(fullEditData?.output?.data_saksi || []).map((p: any, idx: number) => (
+                  <div key={idx} className={styles.arrayItemCard}>
+                    <div className={styles.arrayItemHeader}>
+                      <span>Saksi #{idx + 1}</span>
+                      <button className={styles.itemRemoveBtn} onClick={() => removeArrayItem('data_saksi', idx)}>
+                        🗑️ Hapus
+                      </button>
+                    </div>
+                    <div className={styles.grid2}>
+                      <div className={styles.fieldGroup}>
+                        <span className={styles.label}>NIK</span>
+                        <input type="text" className={styles.input} value={p.nik || ''} onChange={(e) => updateArrayItem('data_saksi', idx, 'nik', e.target.value)} />
+                      </div>
+                      <div className={styles.fieldGroup}>
+                        <span className={styles.label}>Nama</span>
+                        <input type="text" className={styles.input} value={p.nama || ''} onChange={(e) => updateArrayItem('data_saksi', idx, 'nama', e.target.value)} />
+                      </div>
+                      <div className={styles.fieldGroup}>
+                        <span className={styles.label}>Alamat</span>
+                        <input type="text" className={styles.input} value={p.alamat || ''} onChange={(e) => updateArrayItem('data_saksi', idx, 'alamat', e.target.value)} />
+                      </div>
+                      <div className={styles.fieldGroup}>
+                        <span className={styles.label}>Tempat Lahir</span>
+                        <input type="text" className={styles.input} value={p.tempat_lahir || ''} onChange={(e) => updateArrayItem('data_saksi', idx, 'tempat_lahir', e.target.value)} />
+                      </div>
+                      <div className={styles.fieldGroup}>
+                        <span className={styles.label}>Tgl Lahir</span>
+                        <input type="text" className={styles.input} value={p.tgl_lahir || ''} onChange={(e) => updateArrayItem('data_saksi', idx, 'tgl_lahir', e.target.value)} />
+                      </div>
+                      <div className={styles.fieldGroup}>
+                        <span className={styles.label}>Jenis Kelamin</span>
+                        <input type="text" className={styles.input} value={p.jenis_kelamin || ''} onChange={(e) => updateArrayItem('data_saksi', idx, 'jenis_kelamin', e.target.value)} />
+                      </div>
+                      <div className={styles.fieldGroup}>
+                        <span className={styles.label}>Pekerjaan</span>
+                        <input type="text" className={styles.input} value={p.pekerjaan || ''} onChange={(e) => updateArrayItem('data_saksi', idx, 'pekerjaan', e.target.value)} />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              output?.data_saksi && output.data_saksi.length > 0 ? (
+                <div className={styles.tableContainer}>
+                  <table className={styles.table}>
+                    <thead>
+                      <tr>
+                        <th className={styles.th}>NIK</th>
+                        <th className={styles.th}>Nama</th>
+                        <th className={styles.th}>Alamat</th>
+                        <th className={styles.th}>Tempat/Tgl Lahir</th>
+                        <th className={styles.th}>JK</th>
+                        <th className={styles.th}>Pekerjaan</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {output.data_saksi.map((p: any, idx: number) => (
+                        <tr key={idx} className={styles.tr}>
+                          <td className={styles.td}>{p.nik || '-'}</td>
+                          <td className={styles.td}>{p.nama || '-'}</td>
+                          <td className={styles.td}>{p.alamat || '-'}</td>
+                          <td className={styles.td}>{p.tempat_lahir}{p.tgl_lahir ? `, ${p.tgl_lahir}` : ''}</td>
+                          <td className={styles.td}>{p.jenis_kelamin || '-'}</td>
+                          <td className={styles.td}>{p.pekerjaan || '-'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>Belum ada data saksi</p>
+            )}
+          </section>
+
           {/* Sertifikat, PBB, BPHTB, PPh */}
           <div className={styles.grid2}>
             <section className={styles.card}>
