@@ -143,32 +143,78 @@ async fn handle_intercept(
         if !no_akta.is_empty() { output["no_akta"] = json!(no_akta); }
         if !tgl_akta.is_empty() { output["tanggal_akta"] = json!(tgl_akta); }
     } 
-    else if form_id == "frmtipepihak1Dukcapil" || form_id == "frmInput1BadanHukum" || get_val(&data, &["jenis"]) == "Pihak 1" {
+    // ==========================================
+    // LOGIKA PIHAK PENJUAL (Pihak 1)
+    // ==========================================
+    else if form_id == "frmtipepihak1Dukcapil" || form_id == "frmInput1BadanHukum" || form_id == "frmInput1BadanSosial"
+        || get_val(&data, &["jenis"]) == "Pihak 1"
+        || form_id.contains("Pihak1") || form_id.contains("Input1")
+    {
         let mut arr = output["data_penjual"].as_array().cloned().unwrap_or_default();
-        let nik = get_val(&data, &["NIK"]);
+
+        // Ambil identifier unik (NIK / NIKR untuk Lembaga Non AHU)
+        let nik = get_val(&data, &["NIK", "NIKR"]);
         let no_akta_badan = get_val(&data, &["nomoridentitas"]);
         let nama = get_val(&data, &["NAMA_LENGKAP", "nama"]);
-        
+
+        // Cari apakah entitas ini sudah ada di dalam array
         let idx = arr.iter().position(|p| {
-            (!nik.is_empty() && get_val(p, &["nomor_identitas"]) == nik) || 
-            (!no_akta_badan.is_empty() && get_val(p, &["no_akta_pendirian"]) == no_akta_badan) || 
+            (!nik.is_empty() && (get_val(p, &["nomor_identitas"]) == nik || get_val(p, &["kode_subyek"]) == nik)) ||
+            (!no_akta_badan.is_empty() && get_val(p, &["no_akta_pendirian"]) == no_akta_badan) ||
             (!nama.is_empty() && get_val(p, &["nama"]) == nama)
         });
 
         let tipe_pemohon = get_val(&data, &["tipepemohon"]);
-        let person_data = if tipe_pemohon != "1" {
-            json!({
-                "tipe_penjual": "badan hukum",
-                "jenis": get_val(&data, &["tipepemilikid"]), "tipe": get_val(&data, &["tipeusaha"]), "nama": nama,
-                "alamat": get_val(&data, &["alamat", "ALAMAT"]), "kota": get_val(&data, &["kota", "NAMA_KABUPATEN"]),
-                "npwp": get_val(&data, &["npwp"]), "no_akta_pendirian": no_akta_badan, "tgl_akta_pendirian": get_val(&data, &["TANGGAL_PENDIRIAN"])
-            })
-        } else {
+
+        // KONDISI A: PERORANGAN (tipepemohon = "1")
+        let person_data = if tipe_pemohon == "1" || form_id.contains("Dukcapil") {
             json!({
                 "tipe_penjual": "perorangan",
-                "jenis_bukti_identitas": get_val(&data, &["tipebuktiid"]), "nomor_identitas": nik, "nama": nama,
-                "alamat": get_val(&data, &["ALAMAT"]), "tempat_lahir": get_val(&data, &["TEMPAT_LAHIR"]),
-                "tgl_lahir": get_val(&data, &["TANGGAL_LAHIR"]), "jenis_kelamin": get_val(&data, &["JENIS_KELAMIN"]), "pekerjaan": get_val(&data, &["JENIS_PEKERJAAN"])
+                "jenis_bukti_identitas": get_val(&data, &["tipebuktiid"]),
+                "nomor_identitas": nik,
+                "nama": nama,
+                "alamat": get_val(&data, &["ALAMAT"]),
+                "tempat_lahir": get_val(&data, &["TEMPAT_LAHIR"]),
+                "tgl_lahir": get_val(&data, &["TANGGAL_LAHIR"]),
+                "jenis_kelamin": get_val(&data, &["JENIS_KELAMIN"]),
+                "pekerjaan": get_val(&data, &["JENIS_PEKERJAAN"]),
+                "npwp": get_val(&data, &["npwp"])
+            })
+        }
+        // KONDISI B: BADAN HUKUM (tipepemohon = "3")
+        else if tipe_pemohon == "3" || form_id.contains("BadanHukum") {
+            json!({
+                "tipe_penjual": "badan hukum",
+                "jenis_badan": get_val(&data, &["tipepemilikid"]),
+                "tipe_usaha": get_val(&data, &["tipeusaha"]),
+                "nama": nama,
+                "alamat": get_val(&data, &["alamat", "ALAMAT"]),
+                "kota": get_val(&data, &["kota", "NAMA_KABUPATEN"]),
+                "npwp": get_val(&data, &["npwp"]),
+                "no_akta_pendirian": no_akta_badan,
+                "tgl_akta_pendirian": get_val(&data, &["TANGGAL_PENDIRIAN"]),
+                "email": get_val(&data, &["email"])
+            })
+        }
+        // KONDISI C: LEMBAGA NON AHU / BADAN SOSIAL (tipepemohon = "36")
+        else if tipe_pemohon == "36" || form_id.contains("BadanSosial") {
+            json!({
+                "tipe_penjual": "lembaga non ahu",
+                "kode_subyek": nik,
+                "nama": nama,
+                "alamat": get_val(&data, &["ALAMAT"]),
+                "kota": get_val(&data, &["kota", "NAMA_KABUPATEN"]),
+                "npwp": get_val(&data, &["npwp"]),
+                "nomor_telepon": get_val(&data, &["nomortelepon"]),
+                "email": get_val(&data, &["email"])
+            })
+        }
+        // FALLBACK: simpan data mentah agar tidak hilang
+        else {
+            json!({
+                "tipe_penjual": format!("unknown (tipepemohon={})", tipe_pemohon),
+                "nama": nama,
+                "nomor_identitas": nik
             })
         };
 
@@ -193,32 +239,76 @@ async fn handle_intercept(
         if let Some(i) = idx { arr[i] = person_data; } else { arr.push(person_data); }
         output["data_pihak_persetujuan"] = Value::Array(arr);
     }
-    else if form_id == "frmtipepihak2Dukcapil" || form_id == "frmInput2BadanHukum" || get_val(&data, &["jenis"]) == "Pihak 2" {
+    // ==========================================
+    // LOGIKA PIHAK PEMBELI (Pihak 2)
+    // ==========================================
+    else if form_id == "frmtipepihak2Dukcapil" || form_id == "frmInput2BadanHukum" || form_id == "frmInput2BadanSosial"
+        || get_val(&data, &["jenis"]) == "Pihak 2"
+        || form_id.contains("Pihak2") || form_id.contains("Input2")
+    {
         let mut arr = output["data_pembeli"].as_array().cloned().unwrap_or_default();
-        let nik = get_val(&data, &["NIK"]);
+
+        let nik = get_val(&data, &["NIK", "NIKR"]);
         let no_akta_badan = get_val(&data, &["nomoridentitas"]);
         let nama = get_val(&data, &["NAMA_LENGKAP", "nama"]);
-        
+
         let idx = arr.iter().position(|p| {
-            (!nik.is_empty() && get_val(p, &["nomor_identitas"]) == nik) || 
-            (!no_akta_badan.is_empty() && get_val(p, &["no_akta_pendirian"]) == no_akta_badan) || 
+            (!nik.is_empty() && (get_val(p, &["nomor_identitas"]) == nik || get_val(p, &["kode_subyek"]) == nik)) ||
+            (!no_akta_badan.is_empty() && get_val(p, &["no_akta_pendirian"]) == no_akta_badan) ||
             (!nama.is_empty() && get_val(p, &["nama"]) == nama)
         });
 
         let tipe_pemohon = get_val(&data, &["tipepemohon"]);
-        let person_data = if tipe_pemohon != "1" {
-            json!({
-                "tipe_pembeli": "badan hukum",
-                "jenis": get_val(&data, &["tipepemilikid"]), "tipe": get_val(&data, &["tipeusaha"]), "nama": nama, 
-                "alamat": get_val(&data, &["alamat", "ALAMAT"]), "kota": get_val(&data, &["kota", "NAMA_KABUPATEN"]), 
-                "npwp": get_val(&data, &["npwp"]), "no_akta_pendirian": no_akta_badan, "tgl_akta_pendirian": get_val(&data, &["TANGGAL_PENDIRIAN"])
-            })
-        } else {
+
+        // KONDISI A: PERORANGAN
+        let person_data = if tipe_pemohon == "1" || form_id.contains("Dukcapil") {
             json!({
                 "tipe_pembeli": "perorangan",
-                "jenis_bukti_identitas": get_val(&data, &["tipebuktiid"]), "nomor_identitas": nik,
-                "nama": nama, "alamat": get_val(&data, &["ALAMAT"]), "tempat_lahir": get_val(&data, &["TEMPAT_LAHIR"]),
-                "tgl_lahir": get_val(&data, &["TANGGAL_LAHIR"]), "jenis_kelamin": get_val(&data, &["JENIS_KELAMIN"]), "pekerjaan": get_val(&data, &["JENIS_PEKERJAAN"])
+                "jenis_bukti_identitas": get_val(&data, &["tipebuktiid"]),
+                "nomor_identitas": nik,
+                "nama": nama,
+                "alamat": get_val(&data, &["ALAMAT"]),
+                "tempat_lahir": get_val(&data, &["TEMPAT_LAHIR"]),
+                "tgl_lahir": get_val(&data, &["TANGGAL_LAHIR"]),
+                "jenis_kelamin": get_val(&data, &["JENIS_KELAMIN"]),
+                "pekerjaan": get_val(&data, &["JENIS_PEKERJAAN"]),
+                "npwp": get_val(&data, &["npwp"])
+            })
+        }
+        // KONDISI B: BADAN HUKUM
+        else if tipe_pemohon == "3" || form_id.contains("BadanHukum") {
+            json!({
+                "tipe_pembeli": "badan hukum",
+                "jenis_badan": get_val(&data, &["tipepemilikid"]),
+                "tipe_usaha": get_val(&data, &["tipeusaha"]),
+                "nama": nama,
+                "alamat": get_val(&data, &["alamat", "ALAMAT"]),
+                "kota": get_val(&data, &["kota", "NAMA_KABUPATEN"]),
+                "npwp": get_val(&data, &["npwp"]),
+                "no_akta_pendirian": no_akta_badan,
+                "tgl_akta_pendirian": get_val(&data, &["TANGGAL_PENDIRIAN"]),
+                "email": get_val(&data, &["email"])
+            })
+        }
+        // KONDISI C: LEMBAGA NON AHU / BADAN SOSIAL
+        else if tipe_pemohon == "36" || form_id.contains("BadanSosial") {
+            json!({
+                "tipe_pembeli": "lembaga non ahu",
+                "kode_subyek": nik,
+                "nama": nama,
+                "alamat": get_val(&data, &["ALAMAT"]),
+                "kota": get_val(&data, &["kota", "NAMA_KABUPATEN"]),
+                "npwp": get_val(&data, &["npwp"]),
+                "nomor_telepon": get_val(&data, &["nomortelepon"]),
+                "email": get_val(&data, &["email"])
+            })
+        }
+        // FALLBACK
+        else {
+            json!({
+                "tipe_pembeli": format!("unknown (tipepemohon={})", tipe_pemohon),
+                "nama": nama,
+                "nomor_identitas": nik
             })
         };
 
