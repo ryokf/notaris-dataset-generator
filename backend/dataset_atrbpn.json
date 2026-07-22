@@ -145,5 +145,47 @@
         }
       ]
     }
+  },
+  {
+    "akta_id": "572A8430D3E2DAEDE063B416140A3C80",
+    "form_source": "frmEditAkta",
+    "input_ocr": {
+      "ajb": "",
+      "ktp_penjual": [],
+      "ktp_pembeli": "",
+      "kk_pembeli": "",
+      "kode_berkas_cek": "",
+      "keabsahan": "",
+      "sertifikat": "",
+      "pbb": "",
+      "bphtb": "",
+      "pph": ""
+    },
+    "output": {
+      "no_akta": "325/2026",
+      "tanggal_akta": "30/06/2026",
+      "data_penjual": [],
+      "data_pihak_persetujuan": [],
+      "data_pembeli": [],
+      "sertifikat": {
+        "nib": "",
+        "nomor_hak_atau_kode_sertif": ""
+      },
+      "pbb": {
+        "nop": "",
+        "tahun": "",
+        "luas": "",
+        "njop": ""
+      },
+      "bphtb": {
+        "no_bukti_pembayaran": ""
+      },
+      "pph": {
+        "npwp": "",
+        "no_suket": ""
+      },
+      "nilai_akta": "",
+      "data_saksi": []
+    }
   }
 ]
